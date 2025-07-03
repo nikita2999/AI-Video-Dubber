@@ -1,0 +1,5 @@
+venv/
+video_dubber/output/
+video_dubber/uploads/
+__pycache__/
+*.pyc
