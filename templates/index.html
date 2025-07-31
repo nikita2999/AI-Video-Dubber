@@ -6,7 +6,7 @@
   <title>AI Video Dubbing Tool</title>
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
-</head>
+</head> 
 <body class="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50 p-4">
   <div class="max-w-4xl mx-auto">
     <!-- Header -->
@@ -33,7 +33,7 @@
             Upload Video
           </h2>
           <p class="text-gray-500 mb-4">Upload your video file to get started with AI dubbing</p>
-          <form method="post" enctype="multipart/form-data" id="dub-form">
+          <form action="/" method="POST" enctype="multipart/form-data" id="dub-form">
             <label class="block w-full cursor-pointer">
               <input type="file" name="video" accept="video/*" required class="hidden" id="video-upload">
               <div id="upload-area" class="flex flex-col items-center justify-center border-2 border-dashed rounded-lg p-8 text-center transition-colors border-gray-300 hover:border-gray-400 bg-gray-50">
@@ -54,11 +54,18 @@
             </label>
             <div class="mt-6">
               <label class="block text-sm font-medium text-gray-700 mb-1">Target Language</label>
-              <select name="language" required class="w-full border rounded-lg px-3 py-2">
+              <select name="language" id="language-select" required class="w-full border rounded-lg px-3 py-2">
                 <option value="" disabled selected>Select target language</option>
-                {% for lang in languages %}
-                  <option value="{{ lang }}">{{ lang }}</option>
+                {% for lang, code in languages.items() %}
+                  <option value="{{ code }}">{{ lang }}</option>
                 {% endfor %}
+              </select>
+            </div>
+            <div class="mt-6">
+              <label class="block text-sm font-medium text-gray-700 mb-1">Voice</label>
+              <select name="voice" id="voice-select" required class="w-full border rounded-lg px-3 py-2">
+                <option value="" disabled selected>Select voice</option>
+                <!-- Options will be populated by JS -->
               </select>
             </div>
             <button type="submit" id="submit-btn" class="mt-6 w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white px-8 py-3 text-lg font-semibold rounded-lg transition-colors">
@@ -67,9 +74,32 @@
           </form>
           <!-- Loading overlay -->
           <div id="loading-overlay" class="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50 hidden">
-            <div class="bg-white rounded-xl p-8 flex flex-col items-center gap-4 shadow-lg">
+            <div class="bg-white rounded-xl p-8 flex flex-col items-center gap-4 shadow-lg max-w-md">
               <div class="animate-spin rounded-full h-10 w-10 border-b-4 border-purple-600"></div>
-              <span class="text-lg font-semibold text-purple-700">Processing...</span>
+              <span class="text-lg font-semibold text-purple-700">Processing Video...</span>
+              <div class="w-full space-y-2">
+                <div class="flex items-center justify-between text-sm">
+                  <span class="text-gray-600">Transcribing audio...</span>
+                  <span id="transcribe-status" class="text-gray-500">⏳</span>
+                </div>
+                <div class="flex items-center justify-between text-sm">
+                  <span class="text-gray-600">Detecting speakers...</span>
+                  <span id="speaker-status" class="text-gray-500">⏳</span>
+                </div>
+                <div class="flex items-center justify-between text-sm">
+                  <span class="text-gray-600">Translating text...</span>
+                  <span id="translate-status" class="text-gray-500">⏳</span>
+                </div>
+                <div class="flex items-center justify-between text-sm">
+                  <span class="text-gray-600">Generating voices...</span>
+                  <span id="voice-status" class="text-gray-500">⏳</span>
+                </div>
+                <div class="flex items-center justify-between text-sm">
+                  <span class="text-gray-600">Merging video...</span>
+                  <span id="merge-status" class="text-gray-500">⏳</span>
+                </div>
+              </div>
+              <p class="text-sm text-gray-500 text-center">This may take a few minutes depending on video length</p>
             </div>
           </div>
         </div>
@@ -180,14 +210,134 @@
     // Show loading overlay on form submit
     const form = document.getElementById('dub-form');
     const loadingOverlay = document.getElementById('loading-overlay');
-    form.addEventListener('submit', function() {
+    form.addEventListener('submit', function(e) {
+      e.preventDefault(); // Prevent default form submission
+      
       loadingOverlay.classList.remove('hidden');
-      // Reset file input and UI after a short delay (in case of no reload)
-      setTimeout(() => {
-        videoInput.value = '';
-        fileInfo.classList.add('hidden');
-        uploadPlaceholder.classList.remove('hidden');
-      }, 1500);
+      
+      // Simulate progress updates
+      const statuses = ['transcribe-status', 'speaker-status', 'translate-status', 'voice-status', 'merge-status'];
+      let currentStep = 0;
+      
+      const updateProgress = () => {
+        if (currentStep < statuses.length) {
+          // Mark current step as in progress
+          document.getElementById(statuses[currentStep]).textContent = '🔄';
+          document.getElementById(statuses[currentStep]).className = 'text-blue-500';
+          
+          // Mark previous steps as complete
+          for (let i = 0; i < currentStep; i++) {
+            document.getElementById(statuses[i]).textContent = '✅';
+            document.getElementById(statuses[i]).className = 'text-green-500';
+          }
+          
+          currentStep++;
+          
+          // Schedule next update
+          setTimeout(updateProgress, 2000 + Math.random() * 3000); // Random delay between 2-5 seconds
+        }
+      };
+      
+      // Start progress updates after a short delay
+      setTimeout(updateProgress, 1000);
+      
+      // Submit form via AJAX
+      const formData = new FormData(form);
+      
+      fetch('/', {
+        method: 'POST',
+        body: formData
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          // Mark all steps as complete
+          statuses.forEach(statusId => {
+            document.getElementById(statusId).textContent = '✅';
+            document.getElementById(statusId).className = 'text-green-500';
+          });
+          
+          // Show success message
+          setTimeout(() => {
+            loadingOverlay.classList.add('hidden');
+            
+            // Trigger download
+            const downloadLink = document.createElement('a');
+            downloadLink.href = data.download_url;
+            downloadLink.download = data.filename;
+            document.body.appendChild(downloadLink);
+            downloadLink.click();
+            document.body.removeChild(downloadLink);
+            
+            // Reset form
+            videoInput.value = '';
+            fileInfo.classList.add('hidden');
+            uploadPlaceholder.classList.remove('hidden');
+            
+            // Reset status indicators
+            statuses.forEach(statusId => {
+              document.getElementById(statusId).textContent = '⏳';
+              document.getElementById(statusId).className = 'text-gray-500';
+            });
+          }, 2000);
+        } else {
+          throw new Error(data.error || 'Unknown error occurred');
+        }
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        // Show error and hide overlay
+        setTimeout(() => {
+          loadingOverlay.classList.add('hidden');
+          alert('An error occurred during processing. Please try again.');
+          
+          // Reset status indicators
+          statuses.forEach(statusId => {
+            document.getElementById(statusId).textContent = '⏳';
+            document.getElementById(statusId).className = 'text-gray-500';
+          });
+        }, 1000);
+      });
+    });
+    // Voice selection logic
+    const edgeVoices = JSON.parse('{{ edge_voices | tojson | safe }}');
+    const languageSelect = document.getElementById('language-select');
+    const voiceSelect = document.getElementById('voice-select');
+
+    function populateVoices(langCode) {
+      voiceSelect.innerHTML = '<option value="" disabled selected>Select voice</option>';
+      if (edgeVoices[langCode]) {
+        edgeVoices[langCode].forEach(function(voice) {
+          const opt = document.createElement('option');
+          opt.value = voice[0];
+          opt.textContent = voice[1];
+          voiceSelect.appendChild(opt);
+        });
+        voiceSelect.disabled = false;
+      } else {
+        voiceSelect.disabled = true;
+      }
+    }
+    languageSelect.addEventListener('change', function() {
+      populateVoices(this.value);
+    });
+    // Disable voice select until language is chosen
+    voiceSelect.disabled = true;
+    
+    // Hide loading overlay when page is refreshed or loaded
+    window.addEventListener('load', function() {
+      loadingOverlay.classList.add('hidden');
+      // Reset all status indicators
+      const statuses = ['transcribe-status', 'speaker-status', 'translate-status', 'voice-status', 'merge-status'];
+      statuses.forEach(statusId => {
+        document.getElementById(statusId).textContent = '⏳';
+        document.getElementById(statusId).className = 'text-gray-500';
+      });
+    });
+    
+    // Hide loading overlay when user navigates away or refreshes
+    window.addEventListener('beforeunload', function() {
+      loadingOverlay.classList.add('hidden');
     });
   </script>
 </body>
