@@ -6,7 +6,7 @@ edge-tts
 gunicorn
 ffmpeg-python
 torch==2.5.1
-torchaudio==2.2.1
+torchaudio==2.5.1
 numpy
 scipy
 encodec
